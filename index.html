@@ -1,0 +1,834 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>Camping Wedderbergen - Ausflugsziele</title>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css" />
+<script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  html, body { height: 100%; overflow: hidden; }
+  body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: #f5f5f5; }
+
+  #map { position: absolute; top: 0; left: 0; right: 0; bottom: 0; z-index: 1; }
+
+  #header {
+    position: absolute; top: 0; left: 0; right: 0; z-index: 1000;
+    background: linear-gradient(135deg, #2d5016 0%, #4a7c28 100%);
+    color: white; padding: 12px 16px;
+    padding-top: max(12px, env(safe-area-inset-top));
+    box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+  }
+  #header h1 { font-size: 17px; font-weight: 700; }
+  #header p { font-size: 12px; opacity: 0.85; margin-top: 1px; }
+
+  #panel {
+    position: absolute; bottom: 0; left: 0; right: 0; z-index: 1000;
+    background: white; border-radius: 16px 16px 0 0;
+    box-shadow: 0 -4px 20px rgba(0,0,0,0.15);
+    transition: transform 0.35s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+    max-height: 70vh; display: flex; flex-direction: column;
+    padding-bottom: env(safe-area-inset-bottom);
+  }
+  #panel.collapsed { transform: translateY(calc(100% - 54px - env(safe-area-inset-bottom))); }
+
+  #panel-handle {
+    display: flex; align-items: center; justify-content: center;
+    padding: 10px 16px 6px; cursor: pointer;
+    -webkit-tap-highlight-color: transparent; flex-shrink: 0;
+  }
+  #panel-handle .grip { width: 36px; height: 4px; border-radius: 2px; background: #ccc; }
+  #panel-header {
+    padding: 4px 16px 10px;
+    display: flex; align-items: center; justify-content: space-between; flex-shrink: 0;
+  }
+  #panel-header h2 { font-size: 15px; font-weight: 700; color: #222; }
+  #panel-count { font-size: 12px; color: #999; }
+
+  .filter-bar {
+    padding: 0 16px 10px;
+    display: flex; gap: 7px; flex-wrap: nowrap;
+    overflow-x: auto; -webkit-overflow-scrolling: touch; flex-shrink: 0;
+  }
+  .filter-bar::-webkit-scrollbar { display: none; }
+  .filter-btn {
+    padding: 7px 14px; border-radius: 20px; border: 1.5px solid #ddd;
+    background: white; cursor: pointer; font-size: 13px; font-weight: 500;
+    transition: all 0.2s; display: flex; align-items: center; gap: 5px;
+    white-space: nowrap; -webkit-tap-highlight-color: transparent; flex-shrink: 0;
+  }
+  .filter-btn.active { border-color: transparent; color: white; }
+  .filter-btn.active.cat-campingplatz { background: #e74c3c; }
+  .filter-btn.active.cat-auto { background: #3498db; }
+  .filter-btn.active.cat-natur { background: #27ae60; }
+  .filter-btn.active.cat-spielplatz { background: #ff7043; }
+  .filter-btn.active.cat-hafen { background: #0097a7; }
+  .filter-btn.active.cat-eiscafe { background: #e91e63; }
+  .filter-btn.active.cat-supermarkt { background: #607d8b; }
+  .filter-btn.active.cat-strand { background: #00acc1; }
+  .filter-btn.active.cat-shopping { background: #ab47bc; }
+  .filter-btn.active.cat-flugplatz { background: #8e44ad; }
+  .filter-btn.active.cat-sonstiges { background: #f39c12; }
+
+  .dot { width: 8px; height: 8px; border-radius: 50%; display: inline-block; flex-shrink: 0; }
+  .dot-campingplatz { background: #e74c3c; }
+  .dot-auto { background: #3498db; }
+  .dot-natur { background: #27ae60; }
+  .dot-spielplatz { background: #ff7043; }
+  .dot-hafen { background: #0097a7; }
+  .dot-eiscafe { background: #e91e63; }
+  .dot-supermarkt { background: #607d8b; }
+  .dot-strand { background: #00acc1; }
+  .dot-shopping { background: #ab47bc; }
+  .dot-flugplatz { background: #8e44ad; }
+  .dot-sonstiges { background: #f39c12; }
+
+  #poi-list { overflow-y: auto; -webkit-overflow-scrolling: touch; flex: 1; min-height: 0; }
+
+  .poi-card {
+    padding: 14px 16px; border-bottom: 1px solid #f0f0f0;
+    cursor: pointer; transition: background 0.15s;
+    -webkit-tap-highlight-color: transparent;
+  }
+  .poi-card:active { background: #f0f4ff; }
+  .poi-card.highlighted { background: #eef6ff; border-left: 3px solid #3498db; }
+  .poi-card h3 { font-size: 15px; font-weight: 600; color: #222; margin-bottom: 3px; display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+  .poi-card .meta { font-size: 13px; color: #888; margin-bottom: 4px; display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+  .poi-card .desc { font-size: 13px; color: #555; line-height: 1.5; }
+  .poi-card .tags { margin-top: 7px; display: flex; gap: 6px; flex-wrap: wrap; }
+  .tag { font-size: 11px; padding: 3px 9px; border-radius: 10px; background: #f0f0f0; color: #666; font-weight: 500; }
+
+  .badge {
+    display: inline-flex; align-items: center; gap: 3px;
+    font-size: 11px; font-weight: 600;
+    padding: 2px 7px; border-radius: 8px;
+    white-space: nowrap;
+  }
+  .badge-rain { color: #2c5aa0; background: #eaf0fc; }
+  .badge-bike { color: #1b7a3d; background: #e6f4ea; }
+  .badge-fav { color: #b45309; background: #fef3c7; }
+
+  .leaflet-popup-content-wrapper { border-radius: 12px !important; box-shadow: 0 4px 16px rgba(0,0,0,0.15) !important; }
+  .leaflet-popup-content { margin: 14px 16px !important; max-width: 260px; }
+  .popup-title { font-size: 16px; font-weight: 700; margin-bottom: 4px; color: #222; }
+  .popup-cat { font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 6px; }
+  .popup-desc { font-size: 13px; color: #555; line-height: 1.5; margin-bottom: 8px; }
+  .popup-info { font-size: 13px; color: #777; }
+  .popup-badges { margin-top: 6px; margin-bottom: 4px; display: flex; gap: 6px; flex-wrap: wrap; }
+  .popup-link {
+    display: inline-block; margin-top: 8px; font-size: 13px;
+    color: #3498db; text-decoration: none; font-weight: 600; padding: 6px 0;
+  }
+  .popup-nav {
+    display: inline-block; margin-top: 4px; margin-left: 12px; font-size: 13px;
+    color: #27ae60; text-decoration: none; font-weight: 600; padding: 6px 0;
+  }
+
+  .legend {
+    background: white; padding: 8px 12px; border-radius: 8px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.15); font-size: 11px; line-height: 1.9;
+  }
+  .legend-title { font-weight: 700; margin-bottom: 2px; font-size: 12px; }
+  .legend i {
+    width: 10px; height: 10px; display: inline-block; border-radius: 50%;
+    margin-right: 5px; vertical-align: middle;
+  }
+
+  @media (min-width: 769px) {
+    #panel {
+      left: 0; top: 0; bottom: 0; right: auto; width: 380px;
+      border-radius: 0; max-height: 100vh; transform: none !important; padding-top: 64px;
+    }
+    #panel.collapsed { transform: none !important; }
+    #panel-handle { display: none; }
+    #map { left: 380px; }
+    #header { left: 0; }
+  }
+</style>
+</head>
+<body>
+
+<div id="header">
+  <h1>Camping Wedderbergen</h1>
+  <p>22. Juli bis 1. August 2026 &middot; Wedde, Groningen</p>
+</div>
+
+<div id="map"></div>
+
+<div id="panel" class="collapsed">
+  <div id="panel-handle" onclick="togglePanel()"><div class="grip"></div></div>
+  <div id="panel-header">
+    <h2>Ausflugsziele</h2>
+    <span id="panel-count"></span>
+  </div>
+  <div class="filter-bar">
+    <button class="filter-btn active cat-campingplatz" data-cat="campingplatz" onclick="toggleFilter(this)"><span class="dot dot-campingplatz"></span> Platz</button>
+    <button class="filter-btn active cat-auto" data-cat="auto" onclick="toggleFilter(this)"><span class="dot dot-auto"></span> Auto</button>
+    <button class="filter-btn active cat-strand" data-cat="strand" onclick="toggleFilter(this)"><span class="dot dot-strand"></span> Strand</button>
+    <button class="filter-btn active cat-shopping" data-cat="shopping" onclick="toggleFilter(this)"><span class="dot dot-shopping"></span> Shopping</button>
+    <button class="filter-btn active cat-natur" data-cat="natur" onclick="toggleFilter(this)"><span class="dot dot-natur"></span> Natur</button>
+    <button class="filter-btn active cat-spielplatz" data-cat="spielplatz" onclick="toggleFilter(this)"><span class="dot dot-spielplatz"></span> Spielplatz</button>
+    <button class="filter-btn active cat-hafen" data-cat="hafen" onclick="toggleFilter(this)"><span class="dot dot-hafen"></span> Hafen</button>
+    <button class="filter-btn active cat-eiscafe" data-cat="eiscafe" onclick="toggleFilter(this)"><span class="dot dot-eiscafe"></span> Eis</button>
+    <button class="filter-btn active cat-supermarkt" data-cat="supermarkt" onclick="toggleFilter(this)"><span class="dot dot-supermarkt"></span> Einkauf</button>
+    <button class="filter-btn active cat-flugplatz" data-cat="flugplatz" onclick="toggleFilter(this)"><span class="dot dot-flugplatz"></span> Flugplatz</button>
+    <button class="filter-btn active cat-sonstiges" data-cat="sonstiges" onclick="toggleFilter(this)"><span class="dot dot-sonstiges"></span> Sonstiges</button>
+  </div>
+  <div id="poi-list"></div>
+</div>
+
+<script>
+const CAMPINGPLATZ = [53.0859, 7.0825];
+
+const pois = [
+  // === CAMPINGPLATZ ===
+  {
+    name: "Camping Wedderbergen",
+    cat: "campingplatz",
+    lat: 53.0859, lng: 7.0825,
+    dist: "Euer Standort",
+    desc: "Beheiztes Hallenbad, Wasser-Spielplatz, Indoor-Spielhalle, Naturschwimmbad mit Sandstrand, Kanu- und Fahrradverleih.",
+    tags: ["Schwimmbad", "Spielplatz", "Kanus"],
+    rain: true, bike: false,
+    url: "https://www.wedderbergen.de/"
+  },
+
+  // === AUTO-ZIELE ===
+  {
+    name: "Festung Bourtange",
+    cat: "auto",
+    lat: 53.0067, lng: 7.1920,
+    dist: "~15 km",
+    desc: "Komplett restaurierte Festungsanlage aus dem 16. Jahrhundert. Museen, Geschäfte und Restaurant. Halber Tag.",
+    tags: ["Geschichte", "Museen", "Kinder"],
+    rain: false, bike: true, fav: true,
+    url: "https://www.visitgroningen.nl/de/orte/festung-bourtange"
+  },
+  {
+    name: "Museum Klooster Ter Apel",
+    cat: "auto",
+    lat: 52.8723, lng: 7.0713,
+    dist: "~20 km",
+    desc: "Kreuzherrenkloster von 1465, UNESCO Top 100. Klostergarten mit 200+ Pflanzenarten, 200 ha Waldgebiet. Klostercafé.",
+    tags: ["Museum", "Garten", "Wandern"],
+    rain: true, bike: false,
+    url: "https://kloosterterapel.nl/"
+  },
+  {
+    name: "Wildlands Adventure Zoo",
+    cat: "auto",
+    lat: 52.7803, lng: 6.8871,
+    dist: "~35 km (Emmen)",
+    desc: "Zoo und Erlebnispark. Drei Welten: Jungola, Serenga, Nortica. Tiere, Achterbahnen, Abenteuerpfade. Ganzer Tag!",
+    tags: ["Zoo", "Kinder", "Ganzer Tag"],
+    rain: false, bike: false,
+    url: "https://www.wildlands.de/"
+  },
+  {
+    name: "Meyer Werft Papenburg",
+    cat: "auto",
+    lat: 53.0988, lng: 7.3578,
+    dist: "~30 km (DE)",
+    desc: "Kreuzfahrtschiff-Werft. Geführte Besichtigung 90 Min. Erw. 19\u00a0EUR, Kinder 9,50\u00a0EUR. Vorab buchen! Tipp: Am besten bei Regenwetter, und nur wenn die Kinder tiefenentspannt sind.",
+    tags: ["Technik", "Indoor", "Nur bei Regen"],
+    rain: true, bike: false, fav: true,
+    url: "https://besucherzentrum-meyerwerft.de/"
+  },
+  {
+    name: "Dinopark Tenaxx",
+    cat: "auto",
+    lat: 53.0756, lng: 7.0212,
+    dist: "~5 km",
+    desc: "Dinosaurier-Erlebnispark mit Dino-Abenteuern, Arboretum und schöner Natur. Speziell für Kinder ein Highlight.",
+    tags: ["Kinder", "Natur", "Dinos"],
+    rain: false, bike: false,
+    url: "https://www.dinoparklandgoedtenaxx.nl/"
+  },
+  {
+    name: "Wonderwereld Ter Apel",
+    cat: "auto",
+    lat: 52.8705, lng: 7.0779,
+    dist: "~20 km",
+    desc: "Märchenwelt im Wald für kleine Kinder. Riese Greurt, Drachengrotte, Geheimgänge, Spielbereiche. Direkt neben Klooster Ter Apel.",
+    tags: ["Kinder", "Märchen", "Wald"],
+    rain: false, bike: false,
+  },
+
+  // === STRAND & MEER ===
+  {
+    name: "Stadsstrand Delfzijl",
+    cat: "strand",
+    lat: 53.3310, lng: 6.9181,
+    dist: "~30 km",
+    desc: "Neuer Stadtstrand mit Boulevard direkt am Meer (Ems-Mündung). Breite Promenade auf dem Deich, Windschutz, Sandstrand. MuzeeAquarium (Haie, Rochen) nebenan. Neues Strandpavillon. Halber Tag perfekt!",
+    tags: ["Meer", "Promenade", "MuzeeAquarium", "Kinder"],
+    rain: false, bike: false, fav: true,
+    url: "https://www.visitgroningen.nl/de/orte/delfzijl"
+  },
+  {
+    name: "Schildmeer (Badesee)",
+    cat: "strand",
+    lat: 53.2727, lng: 6.8434,
+    dist: "~25 km",
+    desc: "400 m Sandstrand am zweitgrößten See Groningens. Sehr flacher Einstieg, perfekt für Kleinkinder! Strandpavillon mit Eis, Terrassen (Kaap Steendam). Kostenlos parken.",
+    tags: ["Badesee", "Flach", "Kleinkinder", "Kostenlos"],
+    rain: false, bike: false,
+    url: "https://www.visitgroningen.nl/en/doing/on-the-water/shield-lake"
+  },
+  {
+    name: "Camping Zeestrand Termunterzijl",
+    cat: "strand",
+    lat: 53.3011, lng: 7.0324,
+    dist: "~25 km",
+    desc: "Strand direkt am Wattenmeer hinter dem Deich. UNESCO-Weltnaturerbe. Spielplätze, Wattwanderungen möglich. Historisches Hafendorf.",
+    tags: ["Wattenmeer", "UNESCO", "Spielplatz"],
+    rain: false, bike: false,
+    url: "https://www.campingzeestrand.de/"
+  },
+  {
+    name: "Greetsiel (Nordsee-Fischerdorf)",
+    cat: "strand",
+    lat: 53.5006, lng: 7.0942,
+    dist: "~50 km (DE)",
+    desc: "Malerisches Fischerdorf mit Krabbenkutterhafen, Zwillingsmühlen und Promenade. Abenteuerspielplatz, Leuchtturm-Kinderhaus. Trockenstrand Upleward (10 km). Halber bis ganzer Tag.",
+    tags: ["Hafen", "Kutter", "Promenade", "Kinder"],
+    rain: false, bike: false,
+    url: "https://www.greetsiel.de/"
+  },
+
+  // === SHOPPING / BUMMELN ===
+  {
+    name: "Winschoten (Shopping-Stadt)",
+    cat: "shopping",
+    lat: 53.1429, lng: 7.0369,
+    dist: "~9 km",
+    desc: "Zweitgrößte Einkaufsstadt der Provinz. Einkaufszentrum 't Rond mit Hema, Kleidung, Bakker. Plus: De Wereldbazar, Indoor-Markt mit 550+ Shops auf 42.000 m²!",
+    tags: ["'t Rond", "Wereldbazar", "550+ Shops"],
+    rain: true, bike: true,
+    url: "https://www.winschoten24.nl/"
+  },
+  {
+    name: "Stadt Groningen",
+    cat: "shopping",
+    lat: 53.2194, lng: 6.5665,
+    dist: "~50 km",
+    desc: "Studentenstadt mit Grote Markt, Folkingestraat (Boutiquen, Vintage, Schmuck). Groninger Museum. Wochenmarkt Di/Do-Sa. Richtig schön zum Bummeln!",
+    tags: ["Folkingestraat", "Grote Markt", "Museum"],
+    rain: true, bike: false, fav: true,
+    url: "https://www.visitgroningen.nl/de/orte/stadt"
+  },
+  {
+    name: "Leer Altstadt (DE)",
+    cat: "shopping",
+    lat: 53.2316, lng: 7.4610,
+    dist: "~35 km",
+    desc: "Liebevoll restaurierte Altstadt mit Fußgängerzone, kleinen Boutiquen, Teeläden, Buchhandlungen. Direkt am Wasser gelegen. Die Shopping-Stadt Ostfrieslands!",
+    tags: ["Altstadt", "Fußgängerzone", "Am Wasser"],
+    rain: true, bike: false,
+    url: "https://www.touristik-leer.de/freizeit/einkaufen"
+  },
+  {
+    name: "Papenburg Innenstadt (DE)",
+    cat: "shopping",
+    lat: 53.0823, lng: 7.3928,
+    dist: "~30 km",
+    desc: "Dever Park Shopping-Center (17 Shops), Ems Center und Wochenmarkt. Gut kombinierbar mit Besuch der Meyer Werft.",
+    tags: ["Dever Park", "Wochenmarkt"],
+    rain: true, bike: false,
+    url: "https://dever-park.de/"
+  },
+  {
+    name: "Veendam & Stadskanaal",
+    cat: "shopping",
+    lat: 53.1060, lng: 6.8790,
+    dist: "~25-30 km",
+    desc: "Gemütliche Innenstädte mit Kleidungsgeschäften, Möbelläden, Buchhandlungen und Second-Hand-Shops.",
+    tags: ["Shopping", "Gemütlich"],
+    rain: true, bike: false,
+    url: "https://centrumveendam.nl/"
+  },
+
+  // === NATUR / RADTOUREN ===
+  {
+    name: "Rundtour Smeerling",
+    cat: "natur",
+    lat: 53.0252, lng: 7.0808,
+    dist: "~15-20 km Runde / ca. 1,5 Std.",
+    desc: "Durch Waldgebiet mit Bächen (Ruiten-Aa). Flache Strecke, gut mit Anhänger. Natur pur.",
+    tags: ["Wald", "Natur", "Familienfreundlich"],
+    rain: false, bike: true,
+  },
+  {
+    name: "Rundtour Bellingwolde",
+    cat: "natur",
+    lat: 53.1011, lng: 7.1451,
+    dist: "~12-15 km Runde / ca. 1 Std.",
+    desc: "Entlang von Kanälen, Flüssen und Seen. Abwechslungsreich und familienfreundlich.",
+    tags: ["Kanäle", "Natur", "Familienfreundlich"],
+    rain: false, bike: true,
+  },
+  {
+    name: "Kinder-Radroute Weddermeer",
+    cat: "natur",
+    lat: 53.0837, lng: 7.0737,
+    dist: "~12 km Runde / ca. 45 Min.",
+    desc: "Ausgeschilderte Kinder-Radroute ab Villapark Weddermeer. Perfekt für einen entspannten Familienausflug.",
+    tags: ["Kinder", "Ausgeschildert", "Einfach"],
+    rain: false, bike: true,
+  },
+  {
+    name: "Groene Wissel / Ter Wupping",
+    cat: "natur",
+    lat: 53.0386, lng: 7.0732,
+    dist: "Wanderung / teilw. Rad",
+    desc: "Eine der schönsten Routen der NL durch die Bachtäler. Aussichtsturm Ter Wupping.",
+    tags: ["Wandern", "Natur", "Aussicht"],
+    rain: false, bike: true,
+  },
+  {
+    name: "Oldambtmeer / Strand Noord",
+    cat: "natur",
+    lat: 53.1965, lng: 7.0317,
+    dist: "~12 km einfach / ca. 45 Min.",
+    desc: "800 ha großer See bei Blauwestad/Midwolda. Sandstrand, Spielplatz, Schwimmzone, Pavillon mit Terrasse. Super mit Kindern!",
+    tags: ["Strand", "See", "Kinder"],
+    rain: false, bike: true,
+    url: "https://oldambtmeer.nl/stranden/strand-noordrand-midwolda/"
+  },
+
+  // === SPIELPLÄTZE ===
+  {
+    name: "Wedderburcht",
+    cat: "spielplatz",
+    lat: 53.0673, lng: 7.0729,
+    dist: "~1 km / 5 Min.",
+    desc: "Kleine Burg mit Garten, Tiergehege und schönem Spielplatz mitten in Wedde. Perfekt für einen kurzen Abstecher.",
+    tags: ["Spielplatz", "Burg", "Tiere", "Kinder"],
+    rain: false, bike: true,
+  },
+  {
+    name: "Speeltuin Bellingwolde",
+    cat: "spielplatz",
+    lat: 53.1011, lng: 7.1451,
+    dist: "~8 km / ca. 30 Min.",
+    desc: "Schöner öffentlicher Spielplatz im Dorf Bellingwolde. Schaukeln, Klettergerüst, Wippe. Gut kombinierbar mit der Rundtour.",
+    tags: ["Spielplatz", "Kinder", "Kostenlos"],
+    rain: false, bike: true,
+  },
+  {
+    name: "Strand Zuid Blauwestad",
+    cat: "spielplatz",
+    lat: 53.1659, lng: 7.0364,
+    dist: "~12 km / ca. 45 Min.",
+    desc: "Großer Spielplatz direkt am Strand Zuid, neben dem Havenkwartier. Holzbrücke zum Wasser, Spielwiese, Sandstrand. Perfekt für Kleinkinder.",
+    tags: ["Spielplatz", "Strand", "Kinder", "Kostenlos"],
+    rain: false, bike: true,
+    url: "https://oldambtmeer.nl/stranden/strand-zuidrand-blauwestad/"
+  },
+
+  // === HÄFEN ===
+  {
+    name: "Jachthaven Winschoten",
+    cat: "hafen",
+    lat: 53.1432, lng: 7.0485,
+    dist: "~15 km / ca. 1 Std.",
+    desc: "Gemütlicher Jachthafen, wenige Gehminuten vom Zentrum. Ca. 100 Liegeplätze, Terrassen am Wasser, schöne Promenade.",
+    tags: ["Hafen", "Promenade", "Terrasse"],
+    rain: false, bike: true,
+    url: "https://www.jachthavenwinschoten.nl/"
+  },
+  {
+    name: "Havenkwartier Blauwestad",
+    cat: "hafen",
+    lat: 53.1668, lng: 7.0357,
+    dist: "~12 km / ca. 45 Min.",
+    desc: "Jachthafen mit 140 Liegeplätzen mitten in Blauwestad. Strand Zuid direkt nebenan mit Spielplatz, Spielwiese und Holzbrücke.",
+    tags: ["Hafen", "Strand", "Spielplatz"],
+    rain: false, bike: true,
+    url: "https://jachthavensblauwestad.nl/jachthavens/havenkwartier-blauwestad"
+  },
+
+  // === EISCAFÉS ===
+  {
+    name: "IJssalon Toscana",
+    cat: "eiscafe",
+    lat: 53.1441, lng: 7.0368,
+    dist: "~15 km / Winschoten Zentrum",
+    desc: "Beliebte Eisdiele mit täglich über 48 Sorten handgemachtem Eis. Auch Softeis, Eiskaffee und Shakes.",
+    tags: ["Eis", "48+ Sorten", "Handgemacht"],
+    rain: true, bike: true,
+    url: "https://ijssalon-toscana.nl/vestigingen/winschoten/"
+  },
+  {
+    name: "Brasserie Veendiep",
+    cat: "eiscafe",
+    lat: 53.0980, lng: 7.1402,
+    dist: "~8 km / bei Vriescheloo",
+    desc: "Gemütliche Brasserie in alter Feuerwache am Veendiep-Kanal. Hausgemachtes Eis, Lunch, Kaffee. Terrasse am Wasser.",
+    tags: ["Eis", "Lunch", "Terrasse", "Am Wasser"],
+    rain: true, bike: true,
+    url: "https://www.visitgroningen.nl/nl/locaties/2988416546/brasserie-veendiep"
+  },
+  {
+    name: "Julia & Romeo",
+    cat: "eiscafe",
+    lat: 53.1427, lng: 7.0390,
+    dist: "~15 km / Winschoten Zentrum",
+    desc: "Italienisches Eiscafé und Restaurant. Eis, Pasta und Pizza. Schön für ein Eis mit Mittagessen.",
+    tags: ["Eis", "Restaurant", "Italienisch"],
+    rain: true, bike: true,
+  },
+
+  // === SUPERMÄRKTE (nur Nahbereich) ===
+  {
+    name: "PLUS Bellingwolde",
+    cat: "supermarkt",
+    lat: 53.1011, lng: 7.1451,
+    dist: "~5 km",
+    desc: "Nächster Supermarkt! An der Hoofdweg 29 in Bellingwolde. Gut sortiert, Lieferservice verfügbar. Mo-Sa 8:00-20:00.",
+    tags: ["Nah!", "4 km"],
+    rain: true, bike: true,
+    url: "https://www.plus.nl/"
+  },
+  {
+    name: "Jumbo Vlagtwedde",
+    cat: "supermarkt",
+    lat: 53.0259, lng: 7.1071,
+    dist: "~5 km",
+    desc: "Großer Supermarkt mit eigener Metzgerei, Bäckerei und Grillprodukten. Täglich geöffnet.",
+    tags: ["Supermarkt", "5 km", "Metzgerei"],
+    rain: true, bike: true,
+    url: "https://www.jumbo.com/"
+  },
+  {
+    name: "Aldi Vlagtwedde",
+    cat: "supermarkt",
+    lat: 53.0267, lng: 7.1112,
+    dist: "~5 km",
+    desc: "Discounter direkt neben dem Jumbo in Vlagtwedde. Praktisch für Grundversorgung.",
+    tags: ["Discounter", "5 km"],
+    rain: true, bike: true,
+  },
+  {
+    name: "Jumbo Ter Apel",
+    cat: "supermarkt",
+    lat: 52.8751, lng: 7.0595,
+    dist: "~8 km",
+    desc: "Großer Jumbo an der Nederveen Cappelstraat. Mo-Sa 8-20 Uhr (Do-Fr bis 21), So 12-18 Uhr.",
+    tags: ["Supermarkt", "8 km", "Sonntags offen"],
+    rain: true, bike: false,
+    url: "https://www.jumbo.com/"
+  },
+  {
+    name: "Lidl Ter Apel",
+    cat: "supermarkt",
+    lat: 52.8746, lng: 7.0595,
+    dist: "~8 km",
+    desc: "Lidl-Filiale direkt neben dem Jumbo in Ter Apel. Gleicher Parkplatz, gut kombinierbar.",
+    tags: ["Discounter", "8 km"],
+    rain: true, bike: false,
+  },
+
+  // === FLUGPLÄTZE ===
+  {
+    name: "Vliegveld Stadskanaal",
+    cat: "flugplatz",
+    lat: 52.9986, lng: 7.0228,
+    dist: "~25 km",
+    desc: "Sportflugplatz (ICAO: EHST). 500 m Grasbahn, Piste 06/24. Nur Ultraleichtflugzeuge! Vliegclub Westerwolde.",
+    tags: ["UL only", "Gras 500m", "EHST"],
+    rain: false, bike: false,
+    url: "https://vliegveldstadskanaal.nl/"
+  },
+  {
+    name: "Groningen Airport Eelde",
+    cat: "flugplatz",
+    lat: 53.1197, lng: 6.5794,
+    dist: "~50 km",
+    desc: "Regionaler Flughafen (ICAO: EHGG). 2.500 m Asphaltbahn. General Aviation willkommen, kein Slot-Zwang. Alle Typen bis 18,5t MTOW.",
+    tags: ["Alle Typen", "Asphalt 2500m", "EHGG"],
+    rain: false, bike: false,
+    url: "https://www.groningenairport.nl/en/business/general-aviation-business-aviation"
+  },
+
+  // === SONSTIGES ===
+  {
+    name: "Borkum (Nordseeinsel)",
+    cat: "sonstiges",
+    lat: 53.4567, lng: 6.8326,
+    dist: "~60 km + Fähre",
+    desc: "Deutsche Nordseeinsel mit Strand, Dünen und Robben. Ganzer Tag, bei gutem Wetter absolut lohnenswert.",
+    tags: ["Strand", "Natur", "Ganzer Tag"],
+    rain: false, bike: false,
+    url: "https://www.ag-ems.de/"
+  },
+  {
+    name: "Obelink Megastore",
+    cat: "sonstiges",
+    lat: 51.9595, lng: 6.6860,
+    dist: "~200 km (Winterswijk)",
+    desc: "Größter Camping-Shop Europas (72.500 m²). Zu weit für Tagesausflug, perfekt als Stopp auf Hin-/Rückfahrt.",
+    tags: ["Camping-Shop", "Zwischenstopp"],
+    rain: true, bike: false,
+    url: "https://www.obelink.de/"
+  }
+];
+
+const colorMap = {
+  campingplatz: '#e74c3c',
+  auto: '#3498db',
+  natur: '#27ae60',
+  spielplatz: '#ff7043',
+  hafen: '#0097a7',
+  eiscafe: '#e91e63',
+  supermarkt: '#607d8b',
+  strand: '#00acc1',
+  shopping: '#ab47bc',
+  flugplatz: '#8e44ad',
+  sonstiges: '#f39c12'
+};
+const catLabels = {
+  campingplatz: 'Campingplatz',
+  auto: 'Mit dem Auto',
+  natur: 'Natur & Radtouren',
+  spielplatz: 'Spielplatz',
+  hafen: 'Hafen & Promenade',
+  eiscafe: 'Eiscafé',
+  supermarkt: 'Supermarkt',
+  strand: 'Strand & Meer',
+  shopping: 'Shopping & Bummeln',
+  flugplatz: 'Flugplatz',
+  sonstiges: 'Sonstiges'
+};
+
+const activeFilters = new Set(Object.keys(colorMap));
+let markers = {};
+let map;
+let panelOpen = false;
+
+function isMobile() { return window.innerWidth < 769; }
+
+function togglePanel() {
+  const panel = document.getElementById('panel');
+  panelOpen = !panelOpen;
+  panel.classList.toggle('collapsed', !panelOpen);
+  setTimeout(() => map.invalidateSize(), 400);
+}
+
+function createIcon(cat) {
+  const color = colorMap[cat];
+  if (cat === 'campingplatz') {
+    return L.divIcon({ className: '',
+      html: `<div style="width:22px;height:22px;border-radius:50%;background:${color};border:3px solid white;box-shadow:0 2px 8px rgba(0,0,0,0.4);display:flex;align-items:center;justify-content:center;"><span style="color:white;font-size:11px;font-weight:bold;">&#9978;</span></div>`,
+      iconSize: [22, 22], iconAnchor: [11, 11]
+    });
+  }
+  if (cat === 'spielplatz') {
+    return L.divIcon({ className: '',
+      html: `<div style="width:20px;height:20px;border-radius:50%;background:${color};border:2px solid white;box-shadow:0 2px 6px rgba(0,0,0,0.35);display:flex;align-items:center;justify-content:center;"><span style="color:white;font-size:12px;">&#9881;</span></div>`,
+      iconSize: [20, 20], iconAnchor: [10, 10]
+    });
+  }
+  if (cat === 'hafen') {
+    return L.divIcon({ className: '',
+      html: `<div style="width:20px;height:20px;border-radius:50%;background:${color};border:2px solid white;box-shadow:0 2px 6px rgba(0,0,0,0.35);display:flex;align-items:center;justify-content:center;"><span style="color:white;font-size:11px;">&#9875;</span></div>`,
+      iconSize: [20, 20], iconAnchor: [10, 10]
+    });
+  }
+  if (cat === 'supermarkt') {
+    return L.divIcon({ className: '',
+      html: `<div style="width:18px;height:18px;border-radius:50%;background:${color};border:2px solid white;box-shadow:0 2px 6px rgba(0,0,0,0.35);display:flex;align-items:center;justify-content:center;"><span style="color:white;font-size:10px;">&#128722;</span></div>`,
+      iconSize: [18, 18], iconAnchor: [9, 9]
+    });
+  }
+  if (cat === 'eiscafe') {
+    return L.divIcon({ className: '',
+      html: `<div style="width:20px;height:20px;border-radius:50%;background:${color};border:2px solid white;box-shadow:0 2px 6px rgba(0,0,0,0.35);display:flex;align-items:center;justify-content:center;"><span style="color:white;font-size:11px;">&#127846;</span></div>`,
+      iconSize: [20, 20], iconAnchor: [10, 10]
+    });
+  }
+  if (cat === 'flugplatz') {
+    return L.divIcon({ className: '',
+      html: `<div style="width:20px;height:20px;border-radius:50%;background:${color};border:2px solid white;box-shadow:0 2px 6px rgba(0,0,0,0.35);display:flex;align-items:center;justify-content:center;"><span style="color:white;font-size:12px;">&#9992;</span></div>`,
+      iconSize: [20, 20], iconAnchor: [10, 10]
+    });
+  }
+  if (cat === 'strand') {
+    return L.divIcon({ className: '',
+      html: `<div style="width:20px;height:20px;border-radius:50%;background:${color};border:2px solid white;box-shadow:0 2px 6px rgba(0,0,0,0.35);display:flex;align-items:center;justify-content:center;"><span style="color:white;font-size:12px;">&#127958;</span></div>`,
+      iconSize: [20, 20], iconAnchor: [10, 10]
+    });
+  }
+  if (cat === 'shopping') {
+    return L.divIcon({ className: '',
+      html: `<div style="width:20px;height:20px;border-radius:50%;background:${color};border:2px solid white;box-shadow:0 2px 6px rgba(0,0,0,0.35);display:flex;align-items:center;justify-content:center;"><span style="color:white;font-size:11px;">&#128092;</span></div>`,
+      iconSize: [20, 20], iconAnchor: [10, 10]
+    });
+  }
+  return L.divIcon({ className: '',
+    html: `<div style="width:14px;height:14px;border-radius:50%;background:${color};border:2px solid white;box-shadow:0 2px 6px rgba(0,0,0,0.35);"></div>`,
+    iconSize: [14, 14], iconAnchor: [7, 7]
+  });
+}
+
+function navLink(lat, lng) {
+  return `<a class="popup-nav" href="https://www.google.com/maps/dir/?api=1&destination=${lat},${lng}&travelmode=driving" target="_blank">Navigation &#8599;</a>`;
+}
+
+function badges(poi) {
+  let html = '';
+  if (poi.fav || poi.rain || poi.bike) {
+    html += '<div class="popup-badges">';
+    if (poi.fav) html += '<span class="badge badge-fav">&#11088; Andreas\' Tipp</span>';
+    if (poi.bike) html += '<span class="badge badge-bike">&#128690; Mit dem Rad erreichbar</span>';
+    if (poi.rain) html += '<span class="badge badge-rain">&#9730; Schlechtwetter ok</span>';
+    html += '</div>';
+  }
+  return html;
+}
+
+function badgesInline(poi) {
+  let html = '';
+  if (poi.fav) html += '<span class="badge badge-fav">&#11088; Tipp</span>';
+  if (poi.bike) html += '<span class="badge badge-bike">&#128690; Rad</span>';
+  if (poi.rain) html += '<span class="badge badge-rain">&#9730; Regen ok</span>';
+  return html;
+}
+
+function initMap() {
+  map = L.map('map', { zoomControl: false, attributionControl: true }).setView(CAMPINGPLATZ, 11);
+  L.control.zoom({ position: 'topright' }).addTo(map);
+
+  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+    attribution: '&copy; OSM', maxZoom: 18
+  }).addTo(map);
+
+  L.circle(CAMPINGPLATZ, { radius: 15000, color: '#27ae60', fillColor: '#27ae60', fillOpacity: 0.06, weight: 1.5, dashArray: '6,4' }).addTo(map);
+  L.circle(CAMPINGPLATZ, { radius: 40000, color: '#3498db', fillColor: '#3498db', fillOpacity: 0.04, weight: 1.5, dashArray: '6,4' }).addTo(map);
+
+  pois.forEach((poi, i) => {
+    const marker = L.marker([poi.lat, poi.lng], { icon: createIcon(poi.cat) }).addTo(map);
+    const popupHtml = `
+      <div class="popup-cat" style="color:${colorMap[poi.cat]}">${catLabels[poi.cat]}</div>
+      <div class="popup-title">${poi.name}</div>
+      ${badges(poi)}
+      <div class="popup-desc">${poi.desc}</div>
+      <div class="popup-info">${poi.dist}</div>
+      <div>
+        ${poi.url ? `<a class="popup-link" href="${poi.url}" target="_blank">Website &rarr;</a>` : ''}
+        ${poi.cat !== 'campingplatz' ? navLink(poi.lat, poi.lng) : ''}
+      </div>
+    `;
+    marker.bindPopup(popupHtml, { maxWidth: 260, autoPanPadding: [20, 80] });
+    marker.on('click', () => {
+      if (isMobile() && panelOpen) togglePanel();
+    });
+    markers[i] = marker;
+  });
+
+  if (!isMobile()) {
+    const legend = L.control({ position: 'bottomright' });
+    legend.onAdd = function() {
+      const div = L.DomUtil.create('div', 'legend');
+      div.innerHTML = `
+        <div class="legend-title">Legende</div>
+        <div><i style="background:#e74c3c"></i> Campingplatz</div>
+        <div><i style="background:#3498db"></i> Auto-Ausflug</div>
+        <div><i style="background:#00acc1"></i> Strand & Meer</div>
+        <div><i style="background:#ab47bc"></i> Shopping & Bummeln</div>
+        <div><i style="background:#27ae60"></i> Natur & Radtouren</div>
+        <div><i style="background:#ff7043"></i> Spielplatz</div>
+        <div><i style="background:#0097a7"></i> Hafen & Promenade</div>
+        <div><i style="background:#e91e63"></i> Eiscafé</div>
+        <div><i style="background:#607d8b"></i> Supermarkt</div>
+        <div><i style="background:#8e44ad"></i> Flugplatz</div>
+        <div><i style="background:#f39c12"></i> Sonstiges</div>
+        <div style="margin-top:4px;">
+          <span class="badge badge-fav" style="font-size:10px;">&#11088; Tipp</span>
+          <span class="badge badge-bike" style="font-size:10px;">&#128690; Rad</span>
+          <span class="badge badge-rain" style="font-size:10px;">&#9730; Regen ok</span>
+        </div>
+      `;
+      return div;
+    };
+    legend.addTo(map);
+  }
+
+  if (isMobile()) map.panBy([0, -40]);
+  renderSidebar();
+}
+
+function renderSidebar() {
+  const list = document.getElementById('poi-list');
+  list.innerHTML = '';
+  let count = 0;
+
+  pois.forEach((poi, i) => {
+    if (!activeFilters.has(poi.cat)) {
+      if (markers[i]) markers[i].remove();
+      return;
+    }
+    if (markers[i] && !map.hasLayer(markers[i])) markers[i].addTo(map);
+    count++;
+
+    const card = document.createElement('div');
+    card.className = 'poi-card';
+    card.innerHTML = `
+      <h3>
+        <span class="dot dot-${poi.cat}"></span>
+        ${poi.name}
+      </h3>
+      <div class="meta">
+        ${poi.dist}
+        ${badgesInline(poi)}
+      </div>
+      <div class="desc">${poi.desc}</div>
+      ${poi.tags ? `<div class="tags">${poi.tags.map(t => `<span class="tag">${t}</span>`).join('')}</div>` : ''}
+    `;
+    card.addEventListener('click', () => {
+      if (isMobile() && panelOpen) togglePanel();
+      setTimeout(() => {
+        map.flyTo([poi.lat, poi.lng], poi.cat === 'sonstiges' ? 9 : 13, { duration: 0.6 });
+        markers[i].openPopup();
+      }, isMobile() ? 400 : 0);
+      document.querySelectorAll('.poi-card').forEach(c => c.classList.remove('highlighted'));
+      card.classList.add('highlighted');
+    });
+    list.appendChild(card);
+  });
+
+  document.getElementById('panel-count').textContent = count + ' Ziele';
+}
+
+function toggleFilter(btn) {
+  const cat = btn.dataset.cat;
+  if (activeFilters.has(cat)) {
+    activeFilters.delete(cat);
+    btn.classList.remove('active');
+  } else {
+    activeFilters.add(cat);
+    btn.classList.add('active');
+  }
+  renderSidebar();
+}
+
+let touchStartY = 0;
+document.addEventListener('DOMContentLoaded', () => {
+  const panelEl = document.getElementById('panel');
+  panelEl.addEventListener('touchstart', (e) => {
+    touchStartY = e.touches[0].clientY;
+  }, { passive: true });
+  panelEl.addEventListener('touchend', (e) => {
+    const diff = e.changedTouches[0].clientY - touchStartY;
+    if (Math.abs(diff) > 40) {
+      if (diff < 0 && !panelOpen) togglePanel();
+      if (diff > 0 && panelOpen) togglePanel();
+    }
+  }, { passive: true });
+});
+
+initMap();
+</script>
+</body>
+</html>
