@@ -1,0 +1,1002 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Mobilstall Konfigurator — Prototyp</title>
+<style>
+  :root {
+    --primary: #4a4a4a;
+    --primary-light: #6b6b6b;
+    --primary-bg: #f0f0f0;
+    --accent: #666666;
+    --accent-hover: #555555;
+    --bg: #f8f9fa;
+    --card: #ffffff;
+    --border: #dee2e6;
+    --text: #212529;
+    --text-muted: #6c757d;
+    --danger: #dc3545;
+    --success: #28a745;
+    --radius: 8px;
+    --shadow: 0 2px 8px rgba(0,0,0,0.08);
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    background: var(--bg); color: var(--text); line-height: 1.6;
+  }
+  .prototype-banner {
+    background: repeating-linear-gradient(45deg, #ffd700, #ffd700 10px, #ffed4a 10px, #ffed4a 20px);
+    text-align: center; padding: 10px; font-weight: 700; font-size: 13px;
+    color: #333; letter-spacing: 1px; text-transform: uppercase; border-bottom: 2px solid #e8a020;
+  }
+  .prototype-info {
+    background: #fff; border-bottom: 1px solid var(--border); padding: 16px 24px;
+  }
+  .prototype-info-inner {
+    max-width: 960px; margin: 0 auto; font-size: 14px; color: var(--text-muted); line-height: 1.6;
+  }
+  .prototype-info-inner strong { color: var(--text); }
+  .prototype-info-inner p { margin-bottom: 6px; }
+  .prototype-info-inner p:last-child { margin-bottom: 0; }
+  .container { max-width: 960px; margin: 0 auto; padding: 24px 16px; }
+  .header { text-align: center; margin-bottom: 32px; }
+  .header h1 { font-size: 28px; color: var(--primary); margin-bottom: 4px; }
+  .header .subtitle { color: var(--text-muted); font-size: 15px; }
+
+  /* Model Card */
+  .model-card {
+    background: var(--card); border-radius: var(--radius); box-shadow: var(--shadow);
+    padding: 24px; margin-bottom: 24px; border-left: 4px solid var(--primary);
+  }
+  .model-card h2 { color: var(--primary); font-size: 22px; margin-bottom: 4px; }
+  .model-card .model-subtitle { color: var(--text-muted); font-size: 14px; margin-bottom: 16px; }
+  .model-card .base-price { font-size: 28px; font-weight: 700; color: var(--primary); }
+  .model-card .base-price small { font-size: 14px; font-weight: 400; color: var(--text-muted); }
+  .bestseller-badge {
+    display: inline-block; background: var(--accent); color: #fff; font-size: 11px;
+    font-weight: 700; padding: 2px 10px; border-radius: 12px; text-transform: uppercase;
+    margin-left: 8px; vertical-align: middle;
+  }
+
+  /* Specs */
+  .specs-toggle {
+    background: none; border: 1px solid var(--border); border-radius: var(--radius);
+    padding: 10px 16px; cursor: pointer; font-size: 14px; color: var(--primary);
+    margin-top: 16px; width: 100%; text-align: left; display: flex;
+    justify-content: space-between; align-items: center;
+  }
+  .specs-toggle:hover { background: var(--primary-bg); }
+  .specs-toggle .arrow { transition: transform 0.2s; }
+  .specs-toggle.open .arrow { transform: rotate(180deg); }
+  .specs-table { display: none; margin-top: 12px; width: 100%; font-size: 14px; border-collapse: collapse; }
+  .specs-table.visible { display: table; }
+  .specs-table td { padding: 6px 12px; border-bottom: 1px solid #f0f0f0; }
+  .specs-table td:first-child { color: var(--text-muted); width: 40%; }
+
+  /* Option Groups */
+  .option-group {
+    background: var(--card); border-radius: var(--radius); box-shadow: var(--shadow);
+    margin-bottom: 16px; overflow: hidden;
+  }
+  .option-group-header {
+    background: var(--primary-bg); padding: 14px 20px; font-weight: 600;
+    font-size: 16px; color: var(--primary); border-bottom: 1px solid var(--border);
+  }
+
+  /* Option Item */
+  .option-item {
+    border-bottom: 1px solid #f5f5f5; transition: background 0.15s;
+  }
+  .option-item:last-child { border-bottom: none; }
+  .option-item:hover { background: #fafbfc; }
+  .option-item.selected { background: #f0f0f0; }
+
+  .option-main {
+    padding: 14px 20px; display: flex; align-items: flex-start; gap: 12px; cursor: pointer;
+  }
+  .option-main input[type="checkbox"],
+  .option-main input[type="radio"] {
+    margin-top: 4px; accent-color: var(--primary); width: 18px; height: 18px; flex-shrink: 0;
+    cursor: pointer;
+  }
+  .option-info { flex: 1; }
+  .option-name { font-weight: 600; font-size: 15px; margin-bottom: 2px; }
+  .option-desc { font-size: 13px; color: var(--text-muted); line-height: 1.4; }
+  .option-right { display: flex; align-items: center; gap: 10px; flex-shrink: 0; }
+  .option-price { font-weight: 700; font-size: 15px; color: var(--primary); white-space: nowrap; }
+  .option-price.free { color: var(--success); }
+
+  /* Detail Toggle Link */
+  .detail-toggle {
+    background: none; border: none; cursor: pointer; padding: 0; margin-top: 6px;
+    font-size: 12px; color: var(--primary-light); display: inline-flex; align-items: center;
+    gap: 4px; transition: color 0.15s;
+  }
+  .detail-toggle:hover { color: var(--primary); text-decoration: underline; }
+  .detail-toggle .chevron {
+    transition: transform 0.2s; display: inline-block; font-size: 10px;
+  }
+  .detail-toggle.open .chevron { transform: rotate(180deg); }
+
+  /* Detail Panel */
+  .option-detail {
+    display: none; padding: 0 20px 16px 50px;
+    animation: slideDown 0.2s ease-out;
+  }
+  .option-detail.visible { display: block; }
+  @keyframes slideDown { from { opacity: 0; transform: translateY(-8px); } to { opacity: 1; transform: translateY(0); } }
+
+  .detail-content {
+    background: #f5f5f5; border: 1px solid #e0e0e0; border-radius: var(--radius);
+    padding: 16px; display: flex; gap: 16px;
+  }
+  .detail-image {
+    flex-shrink: 0; width: 200px; height: 150px; border-radius: 6px;
+    overflow: hidden; background: #e9ecef;
+  }
+  .detail-image img {
+    width: 100%; height: 100%; object-fit: cover;
+  }
+  .detail-image .placeholder {
+    width: 100%; height: 100%; display: flex; align-items: center; justify-content: center;
+    color: var(--text-muted); font-size: 12px; text-align: center; padding: 8px;
+    background: linear-gradient(135deg, #e9ecef 0%, #dee2e6 100%);
+  }
+  .detail-text { flex: 1; }
+  .detail-text h4 { font-size: 14px; color: var(--primary); margin-bottom: 8px; }
+  .detail-text p { font-size: 13px; color: var(--text); line-height: 1.5; margin-bottom: 6px; }
+  .detail-text .detail-specs {
+    margin-top: 8px; font-size: 12px; color: var(--text-muted);
+    border-top: 1px solid #ddd; padding-top: 8px;
+  }
+  .detail-text .detail-specs span { display: inline-block; margin-right: 16px; }
+
+  /* Capacity Note */
+  .capacity-note {
+    background: #fff3cd; border: 1px solid #ffc107; border-radius: 4px;
+    padding: 6px 10px; font-size: 12px; color: #856404; margin-top: 6px;
+  }
+
+  /* Quantity */
+  .quantity-control { display: flex; align-items: center; gap: 8px; }
+  .quantity-control button {
+    width: 32px; height: 32px; border: 1px solid var(--border); border-radius: 4px;
+    background: #fff; cursor: pointer; font-size: 18px; color: var(--primary);
+    display: flex; align-items: center; justify-content: center;
+  }
+  .quantity-control button:hover { background: var(--primary-bg); }
+  .quantity-control input {
+    width: 48px; text-align: center; border: 1px solid var(--border);
+    border-radius: 4px; padding: 4px; font-size: 15px;
+  }
+  .quantity-control .unit { font-size: 13px; color: var(--text-muted); }
+
+  /* Summary Bar */
+  .summary-bar {
+    position: sticky; bottom: 0; background: var(--card); border-top: 2px solid var(--primary);
+    padding: 16px 24px; box-shadow: 0 -4px 16px rgba(0,0,0,0.1); z-index: 100;
+  }
+  .summary-inner {
+    max-width: 960px; margin: 0 auto; display: flex; align-items: center;
+    justify-content: space-between; flex-wrap: wrap; gap: 12px;
+  }
+  .summary-price { font-size: 24px; font-weight: 700; color: var(--primary); }
+  .summary-price small { font-size: 13px; font-weight: 400; color: var(--text-muted); display: block; }
+  .summary-extras { font-size: 13px; color: var(--text-muted); }
+  .summary-actions { display: flex; gap: 8px; flex-wrap: wrap; }
+
+  /* Buttons */
+  .btn {
+    padding: 10px 20px; border-radius: var(--radius); font-size: 14px;
+    font-weight: 600; cursor: pointer; border: none; transition: all 0.15s;
+  }
+  .btn-primary { background: var(--accent); color: #fff; }
+  .btn-primary:hover { background: var(--accent-hover); }
+  .btn-secondary { background: #fff; color: var(--primary); border: 1px solid var(--primary); }
+  .btn-secondary:hover { background: var(--primary-bg); }
+  .btn-outline { background: transparent; color: var(--text-muted); border: 1px solid var(--border); }
+  .btn-outline:hover { background: #f8f9fa; border-color: #adb5bd; }
+
+  /* Modal */
+  .modal-overlay {
+    display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0;
+    background: rgba(0,0,0,0.5); z-index: 200; align-items: center; justify-content: center;
+  }
+  .modal-overlay.visible { display: flex; }
+  .modal {
+    background: var(--card); border-radius: 12px; padding: 32px; max-width: 520px;
+    width: 90%; max-height: 90vh; overflow-y: auto; box-shadow: 0 8px 32px rgba(0,0,0,0.2);
+  }
+  .modal h3 { font-size: 20px; color: var(--primary); margin-bottom: 16px; }
+  .modal label { display: block; font-size: 14px; font-weight: 600; margin-bottom: 4px; margin-top: 12px; }
+  .modal input, .modal textarea {
+    width: 100%; padding: 10px 12px; border: 1px solid var(--border);
+    border-radius: var(--radius); font-size: 14px; font-family: inherit;
+  }
+  .modal textarea { resize: vertical; min-height: 80px; }
+  .modal .modal-actions { margin-top: 20px; display: flex; gap: 8px; justify-content: flex-end; }
+
+  .config-summary {
+    background: var(--primary-bg); border-radius: var(--radius); padding: 16px; margin: 12px 0; font-size: 13px;
+  }
+  .config-summary h4 { margin-bottom: 8px; color: var(--primary); font-size: 14px; }
+  .config-summary ul { list-style: none; padding: 0; }
+  .config-summary li { padding: 3px 0; display: flex; justify-content: space-between; }
+  .config-summary .total-line {
+    border-top: 2px solid var(--primary); margin-top: 8px; padding-top: 8px;
+    font-weight: 700; font-size: 15px;
+  }
+
+  /* Saved Configs */
+  .saved-configs {
+    background: var(--card); border-radius: var(--radius); box-shadow: var(--shadow);
+    padding: 20px; margin-bottom: 24px;
+  }
+  .saved-configs h3 { font-size: 16px; color: var(--primary); margin-bottom: 12px; }
+  .saved-config-item {
+    display: flex; justify-content: space-between; align-items: center;
+    padding: 10px 12px; border: 1px solid var(--border); border-radius: var(--radius); margin-bottom: 8px; font-size: 14px;
+  }
+  .saved-config-item .name { font-weight: 600; }
+  .saved-config-item .date { color: var(--text-muted); font-size: 12px; }
+  .saved-config-item .actions { display: flex; gap: 6px; }
+  .saved-config-item button {
+    padding: 4px 10px; font-size: 12px; border-radius: 4px; cursor: pointer;
+    border: 1px solid var(--border); background: #fff;
+  }
+  .saved-config-item button:hover { background: #f0f0f0; }
+  .saved-config-item button.load { color: var(--primary); border-color: var(--primary); }
+  .saved-config-item button.delete { color: var(--danger); border-color: var(--danger); }
+
+  /* Toast */
+  .toast {
+    position: fixed; top: 60px; right: 20px; background: var(--success); color: #fff;
+    padding: 12px 20px; border-radius: var(--radius); font-size: 14px; font-weight: 600;
+    box-shadow: 0 4px 16px rgba(0,0,0,0.15); z-index: 300;
+    transform: translateX(120%); transition: transform 0.3s ease;
+  }
+  .toast.visible { transform: translateX(0); }
+  .toast.error { background: var(--danger); }
+
+  /* Email Preview */
+  .email-preview-modal { max-width: 800px; }
+  .email-tabs { display: flex; gap: 0; margin-bottom: 0; border-bottom: 2px solid var(--border); }
+  .email-tab {
+    padding: 10px 20px; cursor: pointer; font-size: 14px; font-weight: 600;
+    background: #f8f9fa; border: 1px solid var(--border); border-bottom: none;
+    border-radius: 8px 8px 0 0; color: var(--text-muted); margin-right: -1px;
+    transition: all 0.15s;
+  }
+  .email-tab.active { background: #fff; color: var(--primary); border-bottom: 2px solid #fff; margin-bottom: -2px; }
+  .email-tab:hover:not(.active) { background: #eee; }
+  .email-content { display: none; }
+  .email-content.active { display: block; }
+  .email-envelope {
+    background: #fff; border: 1px solid var(--border); border-radius: 0 0 var(--radius) var(--radius);
+    overflow: hidden;
+  }
+  .email-header-row {
+    padding: 8px 16px; border-bottom: 1px solid #f0f0f0; font-size: 13px;
+    display: flex; gap: 8px;
+  }
+  .email-header-row .label { color: var(--text-muted); min-width: 60px; flex-shrink: 0; }
+  .email-header-row .value { color: var(--text); font-weight: 500; }
+  .email-body { padding: 20px; font-size: 14px; line-height: 1.7; color: var(--text); }
+  .email-body h4 { color: var(--primary); margin: 16px 0 8px 0; font-size: 15px; }
+  .email-body table { width: 100%; border-collapse: collapse; margin: 12px 0; font-size: 13px; }
+  .email-body table th { text-align: left; padding: 6px 10px; background: var(--primary-bg); color: var(--primary); font-weight: 600; }
+  .email-body table td { padding: 6px 10px; border-bottom: 1px solid #f0f0f0; }
+  .email-body table td:last-child { text-align: right; font-weight: 600; }
+  .email-body .total-row td { border-top: 2px solid var(--primary); font-weight: 700; font-size: 15px; padding-top: 10px; }
+  .email-body .signature { margin-top: 20px; padding-top: 16px; border-top: 1px solid #eee; color: var(--text-muted); font-size: 13px; }
+  .email-sim-note {
+    background: #f0f0f0; border: 1px solid #ccc; border-radius: var(--radius);
+    padding: 10px 14px; margin-bottom: 16px; font-size: 13px; color: #555;
+  }
+
+  /* Load Link */
+  .load-link {
+    background: none; border: none; cursor: pointer; font-size: 13px;
+    color: var(--text-muted); padding: 0; transition: color 0.15s;
+    display: inline-flex; align-items: center; gap: 4px; margin-top: 8px;
+  }
+  .load-link:hover { color: var(--primary); text-decoration: underline; }
+  .load-link .icon { font-size: 14px; }
+
+  /* File Upload Drop Zone */
+  .file-drop-zone {
+    border: 2px dashed var(--border); border-radius: var(--radius); padding: 32px 20px;
+    text-align: center; cursor: pointer; transition: all 0.2s; margin: 12px 0;
+    background: var(--bg);
+  }
+  .file-drop-zone:hover, .file-drop-zone.dragover {
+    border-color: var(--primary); background: var(--primary-bg);
+  }
+  .file-drop-zone .drop-icon { font-size: 32px; margin-bottom: 8px; display: block; }
+  .file-drop-zone .drop-text { font-size: 14px; color: var(--text-muted); }
+  .file-drop-zone .drop-text strong { color: var(--primary); }
+  .file-drop-zone .drop-hint { font-size: 12px; color: var(--text-muted); margin-top: 4px; }
+
+  .footer { text-align: center; padding: 24px; color: var(--text-muted); font-size: 12px; }
+
+  @media (max-width: 640px) {
+    .summary-inner { flex-direction: column; align-items: stretch; text-align: center; }
+    .summary-actions { justify-content: center; }
+    .detail-content { flex-direction: column; }
+    .detail-image { width: 100%; height: 180px; }
+    .option-detail { padding-left: 20px; }
+  }
+</style>
+</head>
+<body>
+
+<div class="prototype-banner">Funktions-Prototyp</div>
+<div class="prototype-info">
+  <div class="prototype-info-inner">
+    <p><strong>Hinweis:</strong> Dies ist ein funktionaler Prototyp, der zeigt, wie der Konfigurator arbeitet. Der Fokus liegt auf der Funktionalität: Optionen wählen, Preise berechnen, Konfiguration speichern und anfragen.</p>
+    <p>Bei der Umsetzung wird der Konfigurator direkt in die bestehende Website (kerkstroer-mobilstall.de) integriert und fügt sich nahtlos in das vorhandene Design ein.</p>
+  </div>
+</div>
+
+<div class="container">
+  <div class="header">
+    <h1>Mobilstall Konfigurator</h1>
+    <p class="subtitle">Stellen Sie sich Ihren individuellen Mobilstall zusammen</p>
+    <button class="load-link" onclick="triggerFileLoad()">
+      <span class="icon">&#128194;</span> Gespeicherte Konfiguration laden
+    </button>
+    <input type="file" id="fileInput" accept=".json" style="display:none" onchange="handleFileLoad(event)" />
+  </div>
+  <div class="model-card" id="modelCard"></div>
+  <div id="optionGroups"></div>
+</div>
+
+<div class="summary-bar">
+  <div class="summary-inner">
+    <div>
+      <div class="summary-price" id="totalPrice"></div>
+      <div class="summary-extras" id="summaryExtras"></div>
+    </div>
+    <div class="summary-actions">
+      <button class="btn btn-outline" onclick="resetConfig()">Zurücksetzen</button>
+      <button class="btn btn-secondary" onclick="openSaveModal()">Speichern</button>
+      <button class="btn btn-primary" onclick="openSubmitModal()">Anfrage senden</button>
+    </div>
+  </div>
+</div>
+
+<div class="modal-overlay" id="saveModal">
+  <div class="modal">
+    <h3>Konfiguration speichern</h3>
+    <label for="saveName">Name der Konfiguration</label>
+    <input type="text" id="saveName" placeholder="z.B. Mein Mobilstall 210" />
+    <div class="modal-actions">
+      <button class="btn btn-outline" onclick="closeModal('saveModal')">Abbrechen</button>
+      <button class="btn btn-primary" onclick="saveConfig()">Speichern</button>
+    </div>
+  </div>
+</div>
+
+<div class="modal-overlay" id="submitModal">
+  <div class="modal">
+    <h3>Konfiguration anfragen</h3>
+    <p style="font-size:14px;color:var(--text-muted);margin-bottom:12px;">
+      Senden Sie uns Ihre Konfiguration und wir erstellen Ihnen ein individuelles Angebot.
+    </p>
+    <div class="config-summary" id="submitSummary"></div>
+    <label for="submitName">Ihr Name *</label>
+    <input type="text" id="submitName" placeholder="Max Mustermann" required />
+    <label for="submitEmail">Ihre E-Mail-Adresse *</label>
+    <input type="email" id="submitEmail" placeholder="max@beispiel.de" required />
+    <label for="submitPhone">Telefon (optional)</label>
+    <input type="tel" id="submitPhone" placeholder="+49 123 456789" />
+    <label for="submitMessage">Nachricht (optional)</label>
+    <textarea id="submitMessage" placeholder="Haben Sie besondere Wünsche oder Fragen?"></textarea>
+    <div class="modal-actions">
+      <button class="btn btn-outline" onclick="closeModal('submitModal')">Abbrechen</button>
+      <button class="btn btn-primary" onclick="submitConfig()">Anfrage absenden</button>
+    </div>
+  </div>
+</div>
+
+<!-- Email Preview Modal -->
+<div class="modal-overlay" id="emailPreviewModal">
+  <div class="modal email-preview-modal">
+    <h3>Anfrage gesendet (Simulation)</h3>
+    <div class="email-sim-note">
+      Keine E-Mails wurden wirklich verschickt. Unten sehen Sie, wie die beiden E-Mails aussehen würden.
+    </div>
+    <div class="email-tabs">
+      <div class="email-tab active" onclick="switchEmailTab('customer')">E-Mail an den Kunden</div>
+      <div class="email-tab" onclick="switchEmailTab('kerkstroer')">E-Mail an Kerkstroer</div>
+    </div>
+    <div class="email-content active" id="emailCustomer"></div>
+    <div class="email-content" id="emailKerkstroer"></div>
+    <div class="modal-actions" style="margin-top:16px;">
+      <button class="btn btn-primary" onclick="closeModal('emailPreviewModal')">Verstanden</button>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+<div class="footer">Prototyp — Daten und Preise ohne Gewähr</div>
+
+<script>
+const IMG_BASE = 'https://www.kerkstroer-mobilstall.de/wp-content/uploads/';
+
+const CONFIG = {
+  meta: { currency: "EUR", currencySymbol: "€", taxIncluded: true, region: "DE",
+    company: { name: "Kerkstroer Mobilstall", email: "info@kerkstroer-mobilstall.de", phone: "+49 5250 99760-0" }
+  },
+  models: [{
+    id: "mobilstall-210",
+    name: "Mobilstall 210",
+    subtitle: "Unser zweitgrößter Mobilstall",
+    description: "Großer mobiler Hühnerstall für die Direktvermarktung von Eiern.",
+    basePrice: 31684,
+    capacityStandard: 210,
+    capacityBio: 144,
+    isBestseller: true,
+    specs: {
+      "Außenmaße": "6,10 × 2,30 × 2,60/2,80 m (L×B×H)",
+      "Innenmaße": "6,00 × 2,20 × 2,33/2,53 m (L×B×H)",
+      "Gewicht": "2.200 kg (inkl. Einrichtung)",
+      "Nutzbare Bodenfläche": "23,4 m² (2 Ebenen)",
+      "Kapazität (Standard)": "bis zu 210 Hühner",
+      "Kapazität (Bio)": "bis zu 144 Hühner",
+      "Fahrwerk": "bis 80 km/h Straßenzulassung",
+      "Wasserbehälter": "180 L",
+      "Trinknippel": "24 Stück",
+      "Sitzstangen": "32,9 m",
+      "Futterbehälter (rund)": "5 × 40 kg",
+      "Familiennester": "0,5 m²"
+    },
+    optionGroups: [
+      {
+        id: "energy", name: "Energieversorgung",
+        options: [
+          { id: "pv-anlage-355w", name: "PV-Anlage 355W", desc: "Komplett mit Speicher, Laderegler und Display.", price: 1550, type: "checkbox",
+            detail: {
+              image: IMG_BASE + "kerkstroer-mobilstall87.jpg",
+              title: "Autarke Stromversorgung",
+              text: "Die 355-Watt-Solaranlage versorgt Ihren Mobilstall komplett autark mit Strom. Der 120Ah-Speicher mit Laderegler und Display sorgt dafür, dass auch bei bewölktem Himmel genug Energie für Lichtsteuerung, Hühnerklappe und Wasserpumpe vorhanden ist. Die Anlage ist werkseitig vormontiert und sofort betriebsbereit.",
+              specs: "355W Leistung · 120Ah Speicher · inkl. Laderegler & Display"
+            }
+          },
+          { id: "spannungswandler", name: "Spannungswandler 12V → 230V", desc: "Wandelt 12V in 230V um für kurzfristige Geräte.", price: 155, type: "checkbox",
+            detail: {
+              image: IMG_BASE + "Spannungswandler.webp",
+              title: "230V-Steckdose im Stall",
+              text: "Der Spannungswandler ermöglicht den Betrieb von herkömmlichen 230V-Geräten im Stall. Ideal für kurzfristige Einsätze wie Hochdruckreiniger oder Beleuchtung bei der Reinigung. Nicht für Dauerbetrieb geeignet.",
+              specs: "12V → 230V · Für Kurzzeiteinsatz"
+            }
+          }
+        ]
+      },
+      {
+        id: "fencing", name: "Weidezaunausrüstung",
+        options: [
+          { id: "weidezaun-standard", name: "Weidezaunpaket Standard", desc: "Weidezaungerät (12/230V), 150 m Zaun, Tor, Pfähle und Erdungsstab.", price: 739, type: "radio", group: "weidezaun",
+            detail: {
+              image: IMG_BASE + "weidezaun.jpg",
+              title: "Komplettes Weidezaunpaket",
+              text: "Das Standard-Weidezaunpaket enthält alles, was Sie für die sichere Einzäunung Ihrer Hühnerweide brauchen. Das Weidezaungerät arbeitet wahlweise mit 12V (Batterie) oder 230V (Netz) und verfügt über eine Stromsparschaltung. Der 150 m Zaun reicht für eine großzügige Weidefläche.",
+              specs: "150 m Zaun · 60 Kunststoffpfähle · Tor · Erdungsstab · Gerät 12/230V"
+            }
+          },
+          { id: "weidezaun-premium", name: "Weidezaunpaket Premium", desc: "Wie Standard, aber mit robusterem Weidezaun Tor Premium.", price: 1031, type: "radio", group: "weidezaun",
+            detail: {
+              image: IMG_BASE + "Premiumtor.webp",
+              title: "Premium-Paket mit robustem Tor",
+              text: "Das Premium-Paket enthält denselben Umfang wie das Standard-Paket, allerdings mit einem deutlich robusteren Weidezaun Tor Premium. Das Premium-Tor hat eine Breite von 530 mm, wiegt 20 kg und ist für den täglichen Einsatz im professionellen Betrieb konzipiert.",
+              specs: "Premium-Tor 530 mm · 20 kg · Alles vom Standard-Paket inklusive"
+            }
+          }
+        ]
+      },
+      {
+        id: "comfort", name: "Komfortfunktionen",
+        options: [
+          { id: "nestautomatik", name: "Nestautomatik", desc: "Verhindert, dass die Hühner in den Nestern schlafen.", price: 798, type: "checkbox",
+            detail: {
+              image: IMG_BASE + "52er-Famliennest-Nestautomatik.webp",
+              title: "Automatische Nestsperre",
+              text: "Die Nestautomatik sperrt die Legenester abends automatisch. So wird verhindert, dass die Hühner in den Nestern übernachten und diese verschmutzen. Am Morgen werden die Nester automatisch wieder freigegeben. Das sorgt für saubere Eier und weniger Reinigungsaufwand.",
+              specs: "Zeitgesteuert · Automatische Sperre am Abend · Freigabe am Morgen"
+            }
+          },
+          { id: "auto-fuetterung", name: "Automatische Fütterung", desc: "245 kg Vorratsbehälter, spiralgesteuert. Reduziert den täglichen Arbeitsaufwand.", price: 3794, type: "checkbox",
+            detail: {
+              image: IMG_BASE + "52er-Famliennest-Nestautomatik.webp",
+              title: "Spiralgesteuerte Futteranlage",
+              text: "Der 245-kg-Vorratsbehälter (Silo) versorgt Ihre Hühner über eine spiralgesteuerte Förderanlage automatisch mit Futter. Die Reichweite beträgt je nach Herdengroße über eine Woche. So reduzieren Sie den täglichen Arbeitsaufwand erheblich und stellen eine gleichmäßige Fütterung sicher.",
+              specs: "245 kg Silo · Spiralförderung · Über 1 Woche Reichweite"
+            }
+          },
+          { id: "scharraumplane", name: "Scharraumplane", desc: "Erleichtert die Reinigung des Scharrraums.", price: 312, type: "checkbox",
+            detail: {
+              image: IMG_BASE + "52er-Scharraumplane1.webp",
+              title: "Einfache Reinigung",
+              text: "Die Scharraumplane wird auf dem Boden des Scharrraums ausgelegt. Bei der Reinigung wird sie einfach herausgezogen. Der gesamte Mist und Einstreu kann so in einem Arbeitsgang entfernt werden, ohne den Boden aufwändig reinigen zu müssen.",
+              specs: "Passgenau für Scharrraum · Herausziehbar"
+            }
+          },
+          { id: "tuerklinke", name: "Türklinke abschließbar", desc: "Inkl. 3 Schlüssel. Schützt vor unbefugtem Zugang.", price: 198, type: "checkbox",
+            detail: {
+              image: IMG_BASE + "Tuer-abschliessbar-global.webp",
+              title: "Sicherheit für Ihren Stall",
+              text: "Die abschließbare Türklinke schützt Ihren Mobilstall vor unbefugtem Zugang. Besonders wichtig bei Standorten in der Nähe von öffentlichen Wegen oder bei wertvollen Hühnerrassen. Drei Schlüssel sind im Lieferumfang enthalten.",
+              specs: "3 Schlüssel inklusive · Edelstahl"
+            }
+          }
+        ]
+      },
+      {
+        id: "extensions", name: "Erweiterungen",
+        options: [
+          { id: "sauberer-vorraum", name: "Sauberer Vorraum", desc: "Hygienische Eientnahme, wettergeschützt.", price: 500, type: "checkbox", capacityNote: "Reduziert Kapazität auf 177 Tiere",
+            detail: {
+              image: IMG_BASE + "IMG_1328.webp",
+              title: "Wettergeschützte Eientnahme",
+              text: "Der saubere Vorraum bietet einen abgetrennten, wettergeschützten Bereich für die hygienische Eientnahme. Zusätzlich dient er als Stauraum für Eimer, Reinigungsmittel und Zubehör. Der Vorraum wird im vorderen Teil des Stalls eingebaut.",
+              specs: "Wettergeschützt · Stauraum · Hinweis: Reduziert Kapazität auf 177 Tiere"
+            }
+          },
+          { id: "lueftungsfenster", name: "Zusätzliches Lüftungsfenster", desc: "90 × 30 cm, außen vergittert.", price: 216, type: "checkbox",
+            detail: {
+              image: IMG_BASE + "40er-Lueftungsfenster.webp",
+              title: "Verbesserte Luftzirkulation",
+              text: "Das zusätzliche Lüftungsfenster (90 × 30 cm) verbessert die Luftzirkulation im Stall, besonders an heißen Sommertagen. Es ist von außen vergittert, damit keine Raubtiere eindringen können, und lässt sich variabel einstellen.",
+              specs: "90 × 30 cm · Außen vergittert · Variabel einstellbar"
+            }
+          },
+          { id: "wintergarten", name: "Wintergarten", desc: "Plane für Sonnenschutz, Greifvogelschutz und Vogelgrippe-Auslauf.", price: 4893, type: "checkbox",
+            detail: {
+              image: IMG_BASE + "52er-Wintergarten.webp",
+              title: "Überdachter Außenbereich",
+              text: "Der Wintergarten ist eine Plane-Konstruktion, die an den Mobilstall angebaut wird. Er dient als Sonnenschutz im Sommer, als Greifvogelschutz für die Hühner und ermöglicht bei Vogelgrippe-Aufstallungspflicht einen überdachten Auslauf, sodass die Hühner nicht komplett im Stall bleiben müssen.",
+              specs: "Sonnenschutz · Greifvogelschutz · Vogelgrippe-konformer Auslauf"
+            }
+          },
+          { id: "ringoesen", name: "Ringösen", desc: "Für Sonnensegel oder Greifvogelnetze. Preis pro Stück.", price: 8, type: "quantity", min: 0, max: 20, unit: "Stück",
+            detail: {
+              image: IMG_BASE + "52er-Ringoesen-3.webp",
+              title: "Befestigungspunkte am Stall",
+              text: "Die Ringösen aus Metall werden am Stall befestigt und dienen als Ankerpunkte für Sonnensegel, Greifvogelnetze oder Vogelschutznetze. Je nach Bedarf können Sie die gewünschte Anzahl bestellen.",
+              specs: "Metall · Pro Stück bestellbar · Für Segel und Netze"
+            }
+          }
+        ]
+      },
+      {
+        id: "design", name: "Design & Farbe",
+        options: [
+          { id: "sitzstangen-rundholz", name: "Sitzstangen: Rundholz", desc: "Klassische runde Sitzstangen.", price: 0, type: "radio", group: "sitzstangen", default: true,
+            detail: {
+              image: IMG_BASE + "Sitzstangen-global.webp",
+              title: "Klassische Rundholz-Stangen",
+              text: "Die klassischen Sitzstangen aus Rundholz bieten den Hühnern guten Halt und sind leicht zu reinigen. Sie sind die Standard-Ausstattung und bei den meisten Geflügelhaltern beliebt.",
+              specs: "Rundholz · Standard-Ausstattung · 32,9 m gesamt"
+            }
+          },
+          { id: "sitzstangen-vierkant", name: "Sitzstangen: Vierkantholz", desc: "Vierkant-Sitzstangen für besseren Halt.", price: 0, type: "radio", group: "sitzstangen",
+            detail: {
+              image: IMG_BASE + "Sitzstangen-global.webp",
+              title: "Vierkantholz-Stangen",
+              text: "Die Vierkant-Sitzstangen bieten den Hühnern durch die flache Oberfläche einen noch besseren Halt. Besonders bei schwereren Rassen beliebt. Kein Aufpreis gegenüber Rundholz.",
+              specs: "Vierkantholz · Kein Aufpreis · 32,9 m gesamt"
+            }
+          },
+          { id: "farbe-standard", name: "Farbe: Standard (Grün)", desc: "Standard-Farbgebung in Grün, ohne Aufpreis.", price: 0, type: "radio", group: "farbe", default: true,
+            detail: { image: null, title: "Standard-Farbe", text: "Die Standard-Farbgebung in Grün ist im Basispreis enthalten und fügt sich natürlich in die Landschaft ein.", specs: "Grün · Inklusive" }
+          },
+          { id: "farbe-anthrazit", name: "Farbe: Anthrazit (RAL 7016)", desc: "Elegante Anthrazit-Lackierung.", price: 357, type: "radio", group: "farbe",
+            detail: {
+              image: IMG_BASE + "Farbe-anthrazit-RAL-7016-global.webp",
+              title: "Anthrazit RAL 7016",
+              text: "Die Anthrazit-Lackierung in RAL 7016 verleiht Ihrem Mobilstall ein modernes, elegantes Erscheinungsbild. Die hochwertige Lackierung ist UV-beständig und langlebig.",
+              specs: "RAL 7016 · UV-beständig"
+            }
+          },
+          { id: "farbe-holzoptik", name: "Farbe: Holzoptik", desc: "Natürliche Holzoptik-Beschichtung.", price: 357, type: "radio", group: "farbe",
+            detail: {
+              image: IMG_BASE + "Farbe-Holzoptik.webp",
+              title: "Natürliche Holzoptik",
+              text: "Die Holzoptik-Beschichtung lässt Ihren Mobilstall besonders natürlich wirken und fügt sich harmonisch in die Landschaft ein. Ideal, wenn der Stall in Sichtweite von Kunden oder Spaziergängern steht.",
+              specs: "Natürliche Optik · UV-beständig"
+            }
+          }
+        ]
+      }
+    ]
+  }]
+};
+
+// STATE
+let currentModel = CONFIG.models[0];
+let selections = {};
+let quantities = {};
+let openDetails = {};
+
+function initSelections() {
+  selections = {}; quantities = {}; openDetails = {};
+  currentModel.optionGroups.forEach(g => {
+    g.options.forEach(o => {
+      if (o.type === "checkbox") selections[o.id] = false;
+      else if (o.type === "radio" && o.default) selections[o.id] = true;
+      else if (o.type === "radio") selections[o.id] = false;
+      else if (o.type === "quantity") quantities[o.id] = 0;
+    });
+  });
+}
+
+function formatPrice(p) { return p.toLocaleString('de-DE') + ' ' + CONFIG.meta.currencySymbol; }
+
+function renderModelCard() {
+  const m = currentModel;
+  let specsHTML = '';
+  for (const [k, v] of Object.entries(m.specs)) specsHTML += `<tr><td>${k}</td><td>${v}</td></tr>`;
+  document.getElementById('modelCard').innerHTML = `
+    <h2>${m.name} ${m.isBestseller ? '<span class="bestseller-badge">Bestseller</span>' : ''}</h2>
+    <p class="model-subtitle">${m.subtitle} — ${m.description}</p>
+    <div class="base-price">ab ${formatPrice(m.basePrice)} <small>inkl. MwSt.</small></div>
+    <button class="specs-toggle" onclick="toggleSpecs(this)">
+      <span>Technische Daten anzeigen</span><span class="arrow">&#9660;</span>
+    </button>
+    <table class="specs-table" id="specsTable">${specsHTML}</table>`;
+}
+
+function toggleSpecs(btn) {
+  btn.classList.toggle('open');
+  document.getElementById('specsTable').classList.toggle('visible');
+  btn.querySelector('span:first-child').textContent = btn.classList.contains('open') ? 'Technische Daten ausblenden' : 'Technische Daten anzeigen';
+}
+
+function renderOptionGroups() {
+  const container = document.getElementById('optionGroups');
+  container.innerHTML = '';
+  currentModel.optionGroups.forEach(group => {
+    let optionsHTML = '';
+    group.options.forEach(opt => {
+      const isSelected = opt.type === 'quantity' ? quantities[opt.id] > 0 : selections[opt.id];
+      const selectedClass = isSelected ? ' selected' : '';
+      const hasDetail = opt.detail && (opt.detail.text || opt.detail.image);
+      const isDetailOpen = openDetails[opt.id] || false;
+
+      let priceStr;
+      if (opt.type === 'quantity') {
+        const total = quantities[opt.id] * opt.price;
+        priceStr = quantities[opt.id] > 0
+          ? `<span class="option-price">+ ${formatPrice(total)}</span>`
+          : `<span class="option-price">+ ${formatPrice(opt.price)}/Stk.</span>`;
+      } else {
+        priceStr = opt.price === 0
+          ? '<span class="option-price free">inklusive</span>'
+          : `<span class="option-price">+ ${formatPrice(opt.price)}</span>`;
+      }
+
+      let inputHTML = '';
+      if (opt.type === 'checkbox') {
+        inputHTML = `<input type="checkbox" id="opt-${opt.id}" ${selections[opt.id] ? 'checked' : ''} onchange="toggleOption('${opt.id}', this.checked)" />`;
+      } else if (opt.type === 'radio') {
+        inputHTML = `<input type="radio" name="${opt.group}" id="opt-${opt.id}" ${selections[opt.id] ? 'checked' : ''} onchange="selectRadio('${opt.group}', '${opt.id}')" />`;
+      }
+
+      let quantityHTML = '';
+      if (opt.type === 'quantity') {
+        quantityHTML = `<div class="quantity-control" style="margin-top:6px;">
+          <button onclick="event.stopPropagation();changeQty('${opt.id}',-1)">−</button>
+          <input type="number" id="qty-${opt.id}" value="${quantities[opt.id]}" min="${opt.min}" max="${opt.max}" onchange="setQty('${opt.id}',this.value)" onclick="event.stopPropagation()" />
+          <button onclick="event.stopPropagation();changeQty('${opt.id}',1)">+</button>
+          <span class="unit">${opt.unit}</span>
+        </div>`;
+      }
+
+      let noteHTML = '';
+      if (opt.capacityNote && selections[opt.id]) {
+        noteHTML = `<div class="capacity-note">&#9888; ${opt.capacityNote}</div>`;
+      }
+
+      let detailToggleHTML = '';
+      if (hasDetail) {
+        const toggleLabel = isDetailOpen ? 'Weniger anzeigen' : 'Mehr erfahren';
+        detailToggleHTML = `<button class="detail-toggle ${isDetailOpen ? 'open' : ''}" onclick="event.stopPropagation();toggleDetail('${opt.id}')"><span>${toggleLabel}</span> <span class="chevron">&#9660;</span></button>`;
+      }
+
+      let detailPanelHTML = '';
+      if (hasDetail) {
+        const d = opt.detail;
+        const imgHTML = d.image
+          ? `<div class="detail-image"><img src="${d.image}" alt="${d.title}" onerror="this.parentElement.innerHTML='<div class=placeholder>Bild wird in der<br>Produktionsversion<br>angezeigt</div>'" /></div>`
+          : `<div class="detail-image"><div class="placeholder">Kein Bild<br>verfügbar</div></div>`;
+        detailPanelHTML = `<div class="option-detail ${isDetailOpen ? 'visible' : ''}" id="detail-${opt.id}">
+          <div class="detail-content">
+            ${imgHTML}
+            <div class="detail-text">
+              <h4>${d.title}</h4>
+              <p>${d.text}</p>
+              ${d.specs ? `<div class="detail-specs">${d.specs}</div>` : ''}
+            </div>
+          </div>
+        </div>`;
+      }
+
+      optionsHTML += `<div class="option-item${selectedClass}">
+        <div class="option-main">
+          ${opt.type !== 'quantity' ? inputHTML : '<div style="width:18px"></div>'}
+          <div class="option-info">
+            <div class="option-name">${opt.name}</div>
+            <div class="option-desc">${opt.desc}</div>
+            ${detailToggleHTML}
+            ${quantityHTML}${noteHTML}
+          </div>
+          <div class="option-right">${priceStr}</div>
+        </div>
+        ${detailPanelHTML}
+      </div>`;
+    });
+    container.innerHTML += `<div class="option-group">
+      <div class="option-group-header">${group.name}</div>${optionsHTML}</div>`;
+  });
+}
+
+function toggleDetail(id) {
+  openDetails[id] = !openDetails[id];
+  renderOptionGroups();
+}
+
+function updateSummary() {
+  let extras = 0, selectedCount = 0;
+  currentModel.optionGroups.forEach(g => {
+    g.options.forEach(o => {
+      if (o.type === 'quantity') { extras += quantities[o.id] * o.price; if (quantities[o.id] > 0) selectedCount++; }
+      else if (selections[o.id] && o.price > 0) { extras += o.price; selectedCount++; }
+    });
+  });
+  const total = currentModel.basePrice + extras;
+  document.getElementById('totalPrice').innerHTML = `${formatPrice(total)} <small>inkl. MwSt.</small>`;
+  document.getElementById('summaryExtras').textContent = extras > 0
+    ? `Basispreis ${formatPrice(currentModel.basePrice)} + ${selectedCount} Option${selectedCount !== 1 ? 'en' : ''} (${formatPrice(extras)})`
+    : `Basispreis ohne Zusatzausstattung`;
+}
+
+function toggleOption(id, checked) { selections[id] = checked; renderOptionGroups(); updateSummary(); }
+
+function selectRadio(group, selectedId) {
+  currentModel.optionGroups.forEach(g => { g.options.forEach(o => { if (o.group === group) selections[o.id] = (o.id === selectedId); }); });
+  renderOptionGroups(); updateSummary();
+}
+
+function changeQty(id, delta) {
+  const o = findOption(id);
+  quantities[id] = Math.max(o.min, Math.min(o.max, quantities[id] + delta));
+  renderOptionGroups(); updateSummary();
+}
+function setQty(id, val) {
+  const o = findOption(id);
+  quantities[id] = Math.max(o.min, Math.min(o.max, parseInt(val) || 0));
+  renderOptionGroups(); updateSummary();
+}
+function findOption(id) {
+  for (const g of currentModel.optionGroups) for (const o of g.options) if (o.id === id) return o;
+  return null;
+}
+function resetConfig() { initSelections(); renderOptionGroups(); updateSummary(); showToast('Konfiguration zurückgesetzt'); }
+
+// SAVE: Download as JSON file
+function openSaveModal() {
+  document.getElementById('saveName').value = '';
+  document.getElementById('saveModal').classList.add('visible');
+  setTimeout(() => document.getElementById('saveName').focus(), 100);
+}
+function saveConfig() {
+  const name = document.getElementById('saveName').value.trim();
+  if (!name) { showToast('Bitte einen Namen eingeben', true); return; }
+
+  const data = {
+    _type: 'mobilstall-konfiguration',
+    _version: '1.0',
+    name: name,
+    date: new Date().toISOString(),
+    modelId: currentModel.id,
+    modelName: currentModel.name,
+    selections: { ...selections },
+    quantities: { ...quantities },
+    totalPrice: calculateTotal()
+  };
+
+  const json = JSON.stringify(data, null, 2);
+  const blob = new Blob([json], { type: 'application/json' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  const fileName = name.toLowerCase().replace(/[^a-z0-9äöüß]+/g, '-').replace(/-+$/, '') + '.json';
+  a.href = url;
+  a.download = 'konfiguration-' + fileName;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+
+  closeModal('saveModal');
+  showToast(`"${name}" heruntergeladen`);
+}
+
+// LOAD: Upload JSON file
+function triggerFileLoad() {
+  document.getElementById('fileInput').click();
+}
+function handleFileLoad(event) {
+  const file = event.target.files[0];
+  if (!file) return;
+  if (!file.name.endsWith('.json')) {
+    showToast('Bitte eine .json-Datei auswählen', true);
+    return;
+  }
+  const reader = new FileReader();
+  reader.onload = function(e) {
+    try {
+      const data = JSON.parse(e.target.result);
+      if (data._type !== 'mobilstall-konfiguration') {
+        showToast('Diese Datei ist keine Mobilstall-Konfiguration', true);
+        return;
+      }
+      if (data.selections) selections = { ...data.selections };
+      if (data.quantities) quantities = { ...data.quantities };
+      renderOptionGroups();
+      updateSummary();
+      showToast(`"${data.name || 'Konfiguration'}" geladen`);
+    } catch (err) {
+      showToast('Datei konnte nicht gelesen werden', true);
+    }
+  };
+  reader.readAsText(file);
+  event.target.value = '';
+}
+
+// SUBMIT
+function calculateTotal() {
+  let extras = 0;
+  currentModel.optionGroups.forEach(g => { g.options.forEach(o => {
+    if (o.type === 'quantity') extras += quantities[o.id] * o.price;
+    else if (selections[o.id] && o.price > 0) extras += o.price;
+  }); });
+  return currentModel.basePrice + extras;
+}
+function getSelectedOptions() {
+  const sel = [];
+  currentModel.optionGroups.forEach(g => { g.options.forEach(o => {
+    if (o.type === 'quantity' && quantities[o.id] > 0) sel.push({ ...o, qty: quantities[o.id], totalPrice: quantities[o.id] * o.price });
+    else if (o.type !== 'quantity' && selections[o.id] && o.price > 0) sel.push({ ...o, totalPrice: o.price });
+  }); });
+  return sel;
+}
+function openSubmitModal() {
+  const selected = getSelectedOptions(), total = calculateTotal();
+  let items = `<li><span>Basispreis ${currentModel.name}</span><span>${formatPrice(currentModel.basePrice)}</span></li>`;
+  selected.forEach(o => { items += `<li><span>${o.qty ? o.name + ' (' + o.qty + '×)' : o.name}</span><span>+ ${formatPrice(o.totalPrice)}</span></li>`; });
+  items += `<li class="total-line"><span>Gesamtpreis</span><span>${formatPrice(total)}</span></li>`;
+  document.getElementById('submitSummary').innerHTML = `<h4>Ihre Konfiguration</h4><ul>${items}</ul>`;
+  document.getElementById('submitModal').classList.add('visible');
+}
+function submitConfig() {
+  const name = document.getElementById('submitName').value.trim();
+  const email = document.getElementById('submitEmail').value.trim();
+  const phone = document.getElementById('submitPhone').value.trim();
+  const message = document.getElementById('submitMessage').value.trim();
+  if (!name || !email) { showToast('Bitte Name und E-Mail ausfüllen', true); return; }
+
+  const selected = getSelectedOptions();
+  const total = calculateTotal();
+  const now = new Date();
+  const dateStr = now.toLocaleDateString('de-DE', { day: '2-digit', month: '2-digit', year: 'numeric' });
+  const timeStr = now.toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit' });
+
+  // Build options table HTML
+  let optRows = `<tr><td>Basismodell: ${currentModel.name}</td><td>${formatPrice(currentModel.basePrice)}</td></tr>`;
+  selected.forEach(o => {
+    const label = o.qty ? `${o.name} (${o.qty}×)` : o.name;
+    optRows += `<tr><td>${label}</td><td>+ ${formatPrice(o.totalPrice)}</td></tr>`;
+  });
+  optRows += `<tr class="total-row"><td>Gesamtpreis (inkl. MwSt.)</td><td>${formatPrice(total)}</td></tr>`;
+
+  // Selected non-default radio options for summary
+  let choicesList = '';
+  currentModel.optionGroups.forEach(g => {
+    g.options.forEach(o => {
+      if (selections[o.id] && o.type === 'radio' && !o.default) {
+        choicesList += `<tr><td>${o.name}</td><td>${o.price > 0 ? formatPrice(o.price) : 'inklusive'}</td></tr>`;
+      }
+    });
+  });
+
+  // Customer email
+  document.getElementById('emailCustomer').innerHTML = `
+    <div class="email-envelope">
+      <div class="email-header-row"><span class="label">Von:</span><span class="value">Kerkstroer Mobilstall &lt;info@kerkstroer-mobilstall.de&gt;</span></div>
+      <div class="email-header-row"><span class="label">An:</span><span class="value">${name} &lt;${email}&gt;</span></div>
+      <div class="email-header-row"><span class="label">Betreff:</span><span class="value">Ihre Mobilstall-Konfiguration — ${currentModel.name}</span></div>
+      <div class="email-body">
+        <p>Guten Tag ${name.split(' ')[0]},</p>
+        <p>vielen Dank für Ihr Interesse an unserem ${currentModel.name}! Wir haben Ihre individuelle Konfiguration erhalten und werden uns in Kürze mit einem persönlichen Angebot bei Ihnen melden.</p>
+
+        <h4>Ihre Konfiguration im Überblick</h4>
+        <table>${optRows}</table>
+
+        ${message ? `<h4>Ihre Nachricht</h4><p><em>„${message}"</em></p>` : ''}
+
+        <p>Unser Team prüft Ihre Auswahl und meldet sich innerhalb von 1–2 Werktagen mit einem detaillierten Angebot bei Ihnen. Bei Fragen erreichen Sie uns jederzeit telefonisch oder per E-Mail.</p>
+
+        <div class="signature">
+          <strong>Kerkstroer Mobilstall</strong><br>
+          Tel.: +49 5250 99760-0<br>
+          E-Mail: info@kerkstroer-mobilstall.de<br>
+          www.kerkstroer-mobilstall.de
+        </div>
+      </div>
+    </div>`;
+
+  // Kerkstroer internal email
+  document.getElementById('emailKerkstroer').innerHTML = `
+    <div class="email-envelope">
+      <div class="email-header-row"><span class="label">Von:</span><span class="value">Mobilstall Konfigurator &lt;konfigurator@kerkstroer-mobilstall.de&gt;</span></div>
+      <div class="email-header-row"><span class="label">An:</span><span class="value">Kerkstroer Mobilstall &lt;info@kerkstroer-mobilstall.de&gt;</span></div>
+      <div class="email-header-row"><span class="label">Betreff:</span><span class="value">Neue Konfigurator-Anfrage: ${currentModel.name} — ${name}</span></div>
+      <div class="email-body">
+        <p><strong>Neue Anfrage über den Mobilstall-Konfigurator</strong></p>
+        <p>Eingegangen am ${dateStr} um ${timeStr} Uhr</p>
+
+        <h4>Kundendaten</h4>
+        <table>
+          <tr><td>Name</td><td style="text-align:left;font-weight:400;">${name}</td></tr>
+          <tr><td>E-Mail</td><td style="text-align:left;font-weight:400;"><a href="mailto:${email}">${email}</a></td></tr>
+          ${phone ? `<tr><td>Telefon</td><td style="text-align:left;font-weight:400;">${phone}</td></tr>` : ''}
+        </table>
+
+        ${message ? `<h4>Nachricht des Kunden</h4><p><em>„${message}"</em></p>` : ''}
+
+        <h4>Konfiguration</h4>
+        <table>${optRows}</table>
+
+        <h4>Nächste Schritte</h4>
+        <p>Bitte erstellen Sie auf Basis dieser Konfiguration ein individuelles Angebot und senden es an ${email}.</p>
+      </div>
+    </div>`;
+
+  closeModal('submitModal');
+  document.getElementById('emailPreviewModal').classList.add('visible');
+  // Reset tabs to first
+  document.querySelectorAll('.email-tab').forEach((t,i) => t.classList.toggle('active', i===0));
+  document.getElementById('emailCustomer').classList.add('active');
+  document.getElementById('emailKerkstroer').classList.remove('active');
+
+  ['submitName','submitEmail','submitPhone','submitMessage'].forEach(id => document.getElementById(id).value = '');
+}
+
+function switchEmailTab(tab) {
+  document.querySelectorAll('.email-tab').forEach(t => t.classList.remove('active'));
+  document.getElementById('emailCustomer').classList.remove('active');
+  document.getElementById('emailKerkstroer').classList.remove('active');
+  if (tab === 'customer') {
+    document.querySelector('.email-tab:first-child').classList.add('active');
+    document.getElementById('emailCustomer').classList.add('active');
+  } else {
+    document.querySelector('.email-tab:last-child').classList.add('active');
+    document.getElementById('emailKerkstroer').classList.add('active');
+  }
+}
+
+function closeModal(id) { document.getElementById(id).classList.remove('visible'); }
+function showToast(msg, isError = false) {
+  const t = document.getElementById('toast'); t.textContent = msg;
+  t.className = 'toast visible' + (isError ? ' error' : '');
+  setTimeout(() => t.classList.remove('visible'), 3000);
+}
+document.querySelectorAll('.modal-overlay').forEach(o => { o.addEventListener('click', e => { if (e.target === o) o.classList.remove('visible'); }); });
+
+// INIT
+initSelections(); renderModelCard(); renderOptionGroups(); updateSummary();
+</script>
+</body>
+</html>
